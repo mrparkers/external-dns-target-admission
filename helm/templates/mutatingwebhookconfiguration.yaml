@@ -1,0 +1,18 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "external-dns-target-admission.fullname" . }}
+webhooks:
+  - name: external-dns-target-admission.parker.gg
+    matchPolicy: Equivalent
+    clientConfig:
+      service:
+        name: {{ include "external-dns-target-admission.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: "/webhook"
+      caBundle: ""
+    rules:
+      - operations: ["CREATE"]
+        apiGroups: ["*"]
+        apiVersions: ["*"]
+        resources: ["ingresses", "gateways"]

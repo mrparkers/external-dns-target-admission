@@ -1,0 +1,48 @@
+{{- $name := include "external-dns-target-admission.fullname" . -}}
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: {{ $name }}-ss-issuer
+spec:
+  selfSigned: {}
+
+---
+
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ $name }}-ca-cert
+spec:
+  secretName: {{ $name }}-ca-certificate
+  issuerRef:
+    name: {{ $name }}-ss-issuer
+    kind: Issuer
+  isCA: true
+  commonName: {{ $name }}
+
+---
+
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: {{ $name }}-ca-issuer
+spec:
+  ca:
+    secretName: {{ $name }}-ca-certificate
+
+---
+
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ $name }}-webhook-certificate
+spec:
+  secretName: {{ $name }}-webhook-certificate
+  issuerRef:
+    name: {{ $name }}-ca-issuer
+    kind: Issuer
+  commonName: {{ $name }}.{{ .Release.Namespace }}.svc
+  organization:
+    - {{ $name }}
+  dnsNames:
+    - {{ $name }}.{{ .Release.Namespace }}.svc
