@@ -1,7 +1,10 @@
+{{- $name := include "external-dns-target-admission.fullname" . -}}
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: {{ include "external-dns-target-admission.fullname" . }}
+  annotations:
+    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ $name }}-ca-cert"
 webhooks:
   - name: external-dns-target-admission.parker.gg
     matchPolicy: Equivalent
