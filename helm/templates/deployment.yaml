@@ -14,6 +14,7 @@ spec:
         app.kubernetes.io/name: {{ include "external-dns-target-admission.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "external-dns-target-admission.fullname" . }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

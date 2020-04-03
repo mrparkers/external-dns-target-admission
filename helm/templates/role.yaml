@@ -3,6 +3,6 @@ kind: Role
 metadata:
   name: {{ include "external-dns-target-admission.fullname" . }}
 rules:
-  - apiGroups: ["v1"]
+  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get"]
