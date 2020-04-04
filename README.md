@@ -19,4 +19,7 @@ This admission controller automatically adds this annotation to all Ingresses an
 
 ## Install
 
-wip 
+```bash
+helm repo add mrparkers https://mrparkers.github.io/charts
+helm helm install ${releaseName} mrparkers/external-dns-target-admission
+```
