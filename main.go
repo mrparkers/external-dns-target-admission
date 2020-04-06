@@ -24,10 +24,16 @@ type controller struct {
 	ipAddress string
 }
 
-type jsonPatchOperation struct {
+type jsonStringPatchOperation struct {
 	Op    string `json:"op"`
 	Path  string `json:"path"`
 	Value string `json:"value"`
+}
+
+type jsonMapPatchOperation struct {
+	Op    string            `json:"op"`
+	Path  string            `json:"path"`
+	Value map[string]string `json:"value"`
 }
 
 type objectWithMeta struct {
@@ -198,8 +204,6 @@ func (controller *controller) webhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (controller *controller) mutate(admissionReview *v1.AdmissionReview) *v1.AdmissionResponse {
-	var patch []jsonPatchOperation
-
 	log.WithFields(log.Fields{
 		"kind":      admissionReview.Request.Kind,
 		"name":      admissionReview.Request.Name,
@@ -233,13 +237,7 @@ func (controller *controller) mutate(admissionReview *v1.AdmissionReview) *v1.Ad
 		}
 	}
 
-	patch = append(patch, jsonPatchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations/external-dns.alpha.kubernetes.io~1target",
-		Value: controller.ipAddress,
-	})
-
-	patchBytes, err := json.Marshal(patch)
+	patchBytes, err := controller.getJsonPatch(objectMeta)
 	if err != nil {
 		return &v1.AdmissionResponse{
 			Result: &metav1.Status{
@@ -255,4 +253,28 @@ func (controller *controller) mutate(admissionReview *v1.AdmissionReview) *v1.Ad
 		PatchType: &patchType,
 		UID:       admissionReview.Request.UID,
 	}
+}
+
+func (controller *controller) getJsonPatch(meta objectWithMeta) ([]byte, error) {
+	if len(meta.Annotations) == 0 {
+		mapPatch := []jsonMapPatchOperation{
+			{
+				Op:   "add",
+				Path: "/metadata/annotations",
+				Value: map[string]string{
+					"external-dns.alpha.kubernetes.io/target": controller.ipAddress,
+				},
+			},
+		}
+		return json.Marshal(mapPatch)
+	}
+
+	stringPatch := []jsonStringPatchOperation{
+		{
+			Op:    "add",
+			Path:  fmt.Sprintf("/metadata/annotations/%s", "external-dns.alpha.kubernetes.io~1target"),
+			Value: controller.ipAddress,
+		},
+	}
+	return json.Marshal(stringPatch)
 }

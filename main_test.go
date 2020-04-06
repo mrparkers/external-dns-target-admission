@@ -24,6 +24,47 @@ func init() {
 }
 
 func TestAnnotateIngress(t *testing.T) {
+	ingress := networkingv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo": "bar",
+			},
+		},
+	}
+	ingressBytes, err := json.Marshal(ingress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	admissionReview := &admissionv1.AdmissionReview{
+		TypeMeta: metav1.TypeMeta{},
+		Request: &admissionv1.AdmissionRequest{
+			Kind: metav1.GroupVersionKind{
+				Kind: "Ingress",
+			},
+			Object: runtime.RawExtension{
+				Raw: ingressBytes,
+			},
+		},
+	}
+
+	admissionResponse := c.mutate(admissionReview)
+
+	assert.True(t, admissionResponse.Allowed)
+	assert.Equal(t, admissionv1.PatchTypeJSONPatch, *admissionResponse.PatchType)
+
+	var patch []jsonStringPatchOperation
+	err = json.Unmarshal(admissionResponse.Patch, &patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "add", patch[0].Op, `expect patch operation to be "add""`)
+	assert.Equal(t, "/metadata/annotations/external-dns.alpha.kubernetes.io~1target", patch[0].Path)
+	assert.Equal(t, expectedIp, patch[0].Value)
+}
+
+func TestAnnotateIngressWithoutAnnotations(t *testing.T) {
 	ingress := networkingv1beta1.Ingress{}
 	ingressBytes, err := json.Marshal(ingress)
 	if err != nil {
@@ -47,19 +88,25 @@ func TestAnnotateIngress(t *testing.T) {
 	assert.True(t, admissionResponse.Allowed)
 	assert.Equal(t, admissionv1.PatchTypeJSONPatch, *admissionResponse.PatchType)
 
-	var patch []jsonPatchOperation
+	var patch []jsonMapPatchOperation
 	err = json.Unmarshal(admissionResponse.Patch, &patch)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, "add", patch[0].Op, `expect patch operation to be "add""`)
-	assert.Equal(t, "/metadata/annotations/external-dns.alpha.kubernetes.io~1target", patch[0].Path)
-	assert.Equal(t, expectedIp, patch[0].Value)
+	assert.Equal(t, "/metadata/annotations", patch[0].Path)
+	assert.Equal(t, expectedIp, patch[0].Value["external-dns.alpha.kubernetes.io/target"])
 }
 
 func TestAnnotateGateway(t *testing.T) {
-	gateway := istioClientNetworkingv1beta1.Gateway{}
+	gateway := istioClientNetworkingv1beta1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo": "bar",
+			},
+		},
+	}
 	gatewayBytes, err := json.Marshal(gateway)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +129,7 @@ func TestAnnotateGateway(t *testing.T) {
 	assert.True(t, admissionResponse.Allowed)
 	assert.Equal(t, admissionv1.PatchTypeJSONPatch, *admissionResponse.PatchType)
 
-	var patch []jsonPatchOperation
+	var patch []jsonStringPatchOperation
 	err = json.Unmarshal(admissionResponse.Patch, &patch)
 	if err != nil {
 		t.Fatal(err)
