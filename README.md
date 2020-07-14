@@ -23,3 +23,5 @@ This admission controller automatically adds this annotation to all Ingresses an
 helm repo add mrparkers https://mrparkers.github.io/charts
 helm install ${releaseName} mrparkers/external-dns-target-admission
 ```
+
+For more information about installing via Helm, refer to the chart docs [here](https://github.com/mrparkers/charts/tree/master/charts/external-dns-target-admission).
